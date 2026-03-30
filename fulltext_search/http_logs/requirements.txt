@@ -1,0 +1,10 @@
+# Hologres基准测试所需的Python依赖包
+
+# psycopg3 - 用于 hologres_data_import.py 和 hologres_benchmark.py
+psycopg[binary]>=3.0
+
+# 配置文件解析
+pyyaml>=5.4.0
+
+# 设置进程名
+setproctitle

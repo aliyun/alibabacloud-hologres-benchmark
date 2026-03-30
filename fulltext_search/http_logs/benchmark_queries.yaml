@@ -1,0 +1,265 @@
+# ============================================================================
+# Hologres 基准测试查询配置文件
+#
+# 模板参数（使用 Python string.Template 语法）：
+#   ${table_name} - Hologres表名（默认: http_logs）
+#
+# 使用示例：
+#   python3 hologres_benchmark.py --table my_logs ...
+#   → 所有 ${table_name} 将被替换为 'my_logs'
+# ============================================================================
+queries:
+  # 1. 查询所有文档
+  - name: "default"
+    description: "查询所有文档"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        select * from ${table_name} limit 10;
+
+  # 2. 精确匹配查询
+  - name: "term"
+    description: "精确匹配查询"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name} WHERE text_search(request, 'GET / HTTP/1.0', 'term') > 0 LIMIT 10;
+
+  # 3. 时间范围查询
+  - name: "range"
+    description: "时间范围查询"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        select * from ${table_name}
+        where "@timestamp" >= extract(epoch from '1998-05-15T00:00:00'::timestamptz)::bigint
+          and "@timestamp" < extract(epoch from now())::bigint
+        limit 10;
+
+  # 4. 时间范围+状态码200
+  - name: "200s-in-range"
+    description: "时间范围+状态码200"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        select * from ${table_name}
+        where "@timestamp" >= 893980800
+          and "@timestamp" < 894067200
+          and status = '200'
+        limit 10;
+
+  # 5. 时间范围+状态码400
+  - name: "400s-in-range"
+    description: "时间范围+状态码400"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        select * from ${table_name}
+        where "@timestamp" >= 893980800
+          and "@timestamp" < 894067200
+          and status = '400'
+        limit 10;
+
+  # 6. 按小时聚合
+  - name: "hourly_agg"
+    description: "按小时聚合"
+    expected_results: 833
+    enable: true
+    hologres:
+      sql: |
+        SELECT
+        date_trunc('hour', to_timestamp("@timestamp")) AS hour,
+        COUNT(*) AS doc_count
+        FROM ${table_name}
+        GROUP BY hour
+        ORDER BY hour;
+
+  # 7. 游标分页查询
+  - name: "scroll"
+    description: "游标分页查询 (25 pages x 1000 docs)"
+    expected_results: 0
+    enable: true
+    hologres:
+      sql: |
+        BEGIN;
+        DECLARE my_cursor CURSOR FOR SELECT * FROM ${table_name};
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        FETCH 1000 FROM my_cursor;
+        COMMIT;
+
+  # 8. 按时间戳降序排列
+  - name: "desc_sort_timestamp"
+    description: "按时间戳降序排列"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        ORDER BY "@timestamp" DESC
+        LIMIT 10;
+
+  # 9. 带条件的降序排列
+  - name: "desc_sort_with_after_timestamp"
+    description: "带条件的降序排列"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        WHERE "@timestamp" < 897436800
+        ORDER BY "@timestamp" DESC
+        LIMIT 10;
+
+  # 10. 按时间戳升序排列
+  - name: "asc_sort_timestamp"
+    description: "按时间戳升序排列"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        ORDER BY "@timestamp" ASC
+        LIMIT 10;
+
+  # 11. 带条件的升序排列
+  - name: "asc_sort_with_after_timestamp"
+    description: "带条件的升序排列"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        WHERE "@timestamp" > 897436800
+        ORDER BY "@timestamp" ASC
+        LIMIT 10;
+
+  # 12. 状态码过滤+时间戳降序
+  - name: "desc_sort_timestamp_can_match_shortcut"
+    description: "状态码过滤+时间戳降序"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        WHERE status = 200
+        ORDER BY "@timestamp" DESC
+        LIMIT 10;
+
+  # 13. 时间戳降序排列(无优化)
+  - name: "desc_sort_timestamp_no_can_match_shortcut"
+    description: "时间戳降序排列(无优化)"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        WHERE status = 200
+        ORDER BY "@timestamp" DESC
+        LIMIT 10;
+
+  # 14. 按响应大小降序
+  - name: "sort_size_desc"
+    description: "按响应大小降序"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        ORDER BY size DESC
+        LIMIT 10;
+
+  # 15. 按响应大小升序
+  - name: "sort_size_asc"
+    description: "按响应大小升序"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        ORDER BY size ASC
+        LIMIT 10;
+
+  # 16. 按状态码降序
+  - name: "sort_status_desc"
+    description: "按状态码降序"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        ORDER BY status DESC
+        LIMIT 10;
+
+  # 17. 按状态码升序
+  - name: "sort_status_asc"
+    description: "按状态码升序"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        ORDER BY status ASC
+        LIMIT 10;
+
+  # 18. 状态码过滤+响应大小降序(有优化)
+  - name: "sort_numeric_can_match_shortcut"
+    description: "状态码过滤+响应大小降序"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        WHERE status = 200
+        ORDER BY size DESC
+        LIMIT 10;
+
+  # 19. 状态码过滤+响应大小降序(无优化)
+  - name: "sort_numeric_no_can_match_shortcut"
+    description: "状态码过滤+响应大小降序(无优化)"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT * FROM ${table_name}
+        WHERE status = 200
+        ORDER BY size DESC
+        LIMIT 10;
+
+  # 20. Terms枚举查询
+  - name: "terms_enum"
+    description: "Terms枚举查询"
+    expected_results: 10
+    enable: true
+    hologres:
+      sql: |
+        SELECT DISTINCT request FROM ${table_name}
+        WHERE request LIKE 'GET image%'
+        LIMIT 10;

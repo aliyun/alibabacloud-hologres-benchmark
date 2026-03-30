@@ -1,0 +1,22 @@
+# LLM Related
+.qoder/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Benchmark result outputs
+results/
+
+# Data files (large, generated)
+*.ndjson
+*.csv
+
+# Logs
+*.log
