@@ -1,6 +1,6 @@
 # Hologres Benchmark
 
-[Hologres](https://www.alibabacloud.com/product/hologres) 官方文档公开的性能测试脚本集合，用于评估 Hologres 在不同场景下的性能表现。
+[Hologres](https://www.aliyun.com/product/hologres) 官方文档公开的性能测试脚本集合，用于评估 Hologres 在不同场景下的性能表现。
 
 ## 基准测试列表
 
