@@ -1,0 +1,80 @@
+# ============================================================================
+# PMC Benchmark Query Configuration
+# Hologres Implementation
+#
+# Template Parameters (using Python string.Template syntax):
+#   ${table_name}  - Hologres table name (default: pmc)
+#   ${param}       - Query parameter (for parameterized queries)
+# ============================================================================
+
+defaults:
+  warmup-iterations: 20
+  iterations: 100
+
+queries:
+  # 1. Match all documents
+  - name: "default"
+    description: "Match all documents"
+    expected_results: 10
+    enable: true
+    hologres: |
+      select "name", "journal", "date", "volume", "issue", "accession", "timestamp", "pmid" 
+      from ${table_name} limit 10;
+
+  # 2. Term query (multi-term iteration)
+  - name: "term"
+    description: "Term query"
+    expected_results: 10
+    enable: true
+    hologres: |
+      select "name", "journal", "date", "volume", "issue", "accession", "timestamp", "pmid" 
+      from ${table_name} 
+      where text_search(body, 'physician', mode => 'term') > 0
+      limit 10;
+
+  # 3. Phrase query
+  - name: "phrase"
+    description: "Phrase query"
+    expected_results: 10
+    enable: true
+    hologres: |
+      select "name", "journal", "date", "volume", "issue", "accession", "timestamp", "pmid" 
+      from ${table_name} 
+      where text_search(body, 'newspaper coverage', mode => 'phrase') > 0
+      limit 10;
+
+  # 4. Monthly aggregation (uncached)
+  - name: "articles_monthly_agg_uncached"
+    description: "Monthly aggregation (uncached)"
+    expected_results: 123
+    enable: true
+    hologres: |
+      SELECT DATE_TRUNC('month', "timestamp") AS month, COUNT(*) AS doc_count
+      FROM ${table_name}
+      GROUP BY 1
+      ORDER BY month;
+
+  # 5. Monthly aggregation (cached)
+  - name: "articles_monthly_agg_cached"
+    description: "Monthly aggregation (cached)"
+    expected_results: 123
+    enable: true
+    cache: true
+    hologres: |
+      SELECT DATE_TRUNC('month', "timestamp") AS month, COUNT(*) AS doc_count
+      FROM ${table_name}
+      GROUP BY 1
+      ORDER BY month;
+
+  # 6. Cursor pagination query
+  - name: "scroll"
+    type: scroll
+    description: "Cursor pagination query (25 pages x 100 docs)"
+    expected_results: 0
+    enable: true
+    scroll:
+      pages: 25
+      size: 100
+      cursor_name: my_cursor
+    hologres: |
+      DECLARE ${cursor_name} CURSOR FOR SELECT "name", "journal", "date", "volume", "issue", "accession", "timestamp", "pmid" FROM ${table_name};

@@ -1,0 +1,8 @@
+{
+  "host": "<endpoint>",
+  "port": <port>,
+  "database": "<database_name>",
+  "username": "<user_name>", 
+  "password": "<password>",
+  "table_name": "pmc"
+}
